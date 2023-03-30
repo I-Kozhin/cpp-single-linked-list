@@ -80,10 +80,12 @@ class SingleLinkedList {
 		}
 
 		[[nodiscard]] reference operator*() const noexcept {
+			assert(node_ != nullptr); // проверка выхода за пределы списка
 			return node_->value;
 		}
 
 		[[nodiscard]] pointer operator->() const noexcept {
+			assert(node_ != nullptr);  // проверка выхода за пределы списка
 			return &node_->value;
 		}
 
@@ -159,13 +161,10 @@ public:
 		return *this;
 	}
 
+	// Метод переписан с использованием std::swap
 	void swap(SingleLinkedList& other) noexcept {
-		Node* tmp = other.head_.next_node;
-		other.head_.next_node = head_.next_node;
-		head_.next_node = tmp;
-		tmp = other.last;
-		other.last = last;
-		last = tmp;
+		std::swap(head_.next_node, other.head_.next_node);
+		std::swap(last, other.last);
 	}
 
 	[[nodiscard]] size_t GetSize() const noexcept {
@@ -237,6 +236,7 @@ public:
 	 */
 	Iterator InsertAfter(ConstIterator pos, const Type& value) {
 		Node* current = pos.node_;
+		assert(current != nullptr); // итератор указывает на вершину
 		if (current == &head_) {
 			PushFront(value);
 			return ConstIterator(head_.next_node);
@@ -247,24 +247,27 @@ public:
 		else {
 			Node* new_node = new Node(value, current->next_node);
 			current->next_node = new_node;
+			if (current == last) { // учитываем случай, когда вставляем в last
+				last = new_node;
+			}
 			++size_;
 			return ConstIterator(current->next_node);
 		}
 	}
 
-	void PopFront() noexcept {
-		Node* second_el_node = head_.next_node->next_node;  // нахожу второй элемент
-		delete head_.next_node;   // удаляю первый 
-		head_.next_node = second_el_node; // второй становится первым 
-	}
+void PopFront() noexcept {
+	if (IsEmpty()) return; // список пуст, ничего не делаем
+    Node* second_el_node = head_.next_node->next_node;  // нахожу второй элемент
+    delete head_.next_node;   // удаляю первый 
+    head_.next_node = second_el_node; // второй становится первым 
+}
 
 
-	/*
-	 * Удаляет элемент, следующий за pos.
-	 * Возвращает итератор на элемент, следующий за удалённым
-	 */
+	//Удаляет элемент, следующий за pos.
+	//Возвращает итератор на элемент, следующий за удалённым
 	Iterator EraseAfter(ConstIterator pos) noexcept {
 		Node* current = pos.node_;
+		assert(current != nullptr); // проверка
 		if (current == &head_) {
 			PopFront();
 			return ConstIterator(head_.next_node);
@@ -274,10 +277,19 @@ public:
 		}
 		else {
 			Node* tmp = current->next_node->next_node;
-			delete current->next_node;
-			--size_;
-			current->next_node = tmp;
-			return ConstIterator(current->next_node);  
+			if (tmp == nullptr) {
+				// Удаляем последний элемент списка
+				delete current->next_node;
+				current->next_node = nullptr;
+				last = current;
+			}
+			else {
+				// Удаляем элемент в середине списка
+				delete current->next_node;
+				--size_;
+				current->next_node = tmp;
+			}
+			return ConstIterator(current->next_node);    
 		}
 	}
 
